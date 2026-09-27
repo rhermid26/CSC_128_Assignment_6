@@ -17,4 +17,9 @@ DOCUMENTS = [
     "Group study rooms seat six to eight people. Individual study "
     "carrels do not require a reservation and are first come, first "
     "served.",
+
+    "After you apply, complete orientation online and meet with an academic advisor ",
+    "you can register for courses online in MyCollege"
+
+
 ]
