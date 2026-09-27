@@ -1,36 +1,46 @@
-# the Streamlit interface
+"""
+CSC-128 Assignment 6 starter: retrieval
+Roberto Hermida Lujan
+"""
+
+import streamlit as st
+
+from groq import Groq, RateLimitError
 
 from retriever import Retriever
-from groq import Groq
-from groq import RateLimitError
-import os
-import streamlit as st;
 
-#MODEL_NAME = "llama-3.1-8b-instant"
 
 MODEL_NAME = "openai/gpt-oss-20b"
-GREETING_TITLE = "IT Help Desk Bot"
-GREETING_CAPTION = "You are chatting with an automated assistant, not a person."
+
+TITLE = "Central Piedmont Library Assistant"
+CAPTION = "You are chatting with an automated assistant, not a person."
 INPUT_HELP = "What do you need help with?"
-ERROR_MESSAGE_RATELIMIT = "The AI service is busy right now. Please wait and try again."
-ERROR_MESSAGE_EXCEPTION = "The AI service is unavailable right now. Please try again later."
-SYSTEM_PROMPT = ""
-NO_CONTEXT_FOUND = "Sorry I cannot help you with that question."
 
-# grounded_bot.py
+REFUSAL = (
+    "I do not have that information. "
+    "Please ask at the library help desk."
+)
 
-# Connect to Groq
-client = Groq(api_key=os.environ["GROQ_API_KEY"])
+RATE_LIMIT_ERROR = (
+    "The AI service is busy right now. "
+    "Please wait and try again."
+)
 
-GROUNDED_PROMPT = """You are the Central Piedmont library assistant.
+GENERAL_ERROR = (
+    "The AI service is unavailable right now. "
+    "Please try again later."
+)
 
-Answer the student's question using ONLY the reference text below.
+
+GROUNDED_PROMPT = """You are a Central Piedmont library assistant.
+
+Answer using ONLY the reference text below.
 
 Rules:
-- If the reference text does not contain the answer, say exactly:
+- Do not use outside knowledge.
+- Do not guess.
+- If the answer is not in the reference text, say exactly:
   "I do not have that information. Please ask at the library help desk."
-- Do not use any knowledge outside the reference text.
-- Do not guess at hours, dates, or numbers.
 - Keep the answer under three sentences.
 
 REFERENCE TEXT:
@@ -38,47 +48,68 @@ REFERENCE TEXT:
 """
 
 
-# Set up the page
-st.title(GREETING_TITLE)
-st.caption(GREETING_CAPTION)
+# Connect to Groq
+client = Groq(
+    api_key=st.secrets["GROQ_API_KEY"]
+)
 
+
+# Set up the page
+st.title(TITLE)
+st.caption(CAPTION)
 
 
 # Store messages
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "retriever" not in st.session_state:
-    st.session_state.retriever = Retriever();
 
-# Show old messages
+if "retriever" not in st.session_state:
+    st.session_state.retriever = Retriever()
+
+
+# Show previous messages
 for message in st.session_state.messages:
+
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
 
-
 def answer(question):
+
+    # Find relevant chunks
     chunks = st.session_state.retriever.search(question)
 
+    # Stop before calling the model
     if not chunks:
-        return ("I do not have that information. " "Please ask at the library help desk.")
+        return REFUSAL, []
 
-    #context = "\n\n".join(chunks)
+    # Build reference text
     context = st.session_state.retriever.build_context(chunks)
+
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "system",
-             "content": GROUNDED_PROMPT.format(context=context)},
-            {"role": "user", "content": question},
-        ],
+            {
+                "role": "system",
+                "content": GROUNDED_PROMPT.format(
+                    context=context
+                )
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
     )
-    return response.choices[0].message.content
+
+    return response.choices[0].message.content, chunks
 
 
 # Get user input
 user_input = st.chat_input(INPUT_HELP)
+
+
 if user_input:
 
     # Save user message
@@ -87,39 +118,36 @@ if user_input:
         "content": user_input
     })
 
-
     # Show user message
     with st.chat_message("user"):
         st.write(user_input)
 
-
-    # Keep the last 10 messages
-    recent_messages = st.session_state.messages[-10:]
-
-
-    # Get AI response
+    # Generate answer
     with st.chat_message("assistant"):
+
         try:
 
-            reply = answer(user_input);
+            reply, sources = answer(user_input)
 
-            # Save AI response
+            st.write(reply)
+
+            # Show sources
+            if sources:
+
+                st.caption("Sources:")
+
+                for source in sources:
+                    st.caption(
+                        f"{source['id']} — {source['source']}"
+                    )
+
+            # Save assistant message
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": reply
             })
 
-
-            # Save AI response
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": reply
-            })
-
-        # Handle rate limits
         except RateLimitError:
-            st.error(ERROR_MESSAGE_RATELIMIT)
-        # Handle other errors
+            st.error(RATE_LIMIT_ERROR)
         except Exception:
-            st.error(ERROR_MESSAGE_EXCEPTION)
-        
+            st.error(GENERAL_ERROR)

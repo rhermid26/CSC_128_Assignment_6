@@ -14,12 +14,14 @@ TEST_QUESTIONS = [
     "How can I see my grades for my classes?",
     "Where can I buy school supplies?",
     "Any information for career services?",
-    "Where is my house located?"
+    "Any open career fairs happening this week?",
+    "Any information on where to check for my grades for my classes?"
 ]
 
-my_retriever = Retriever(DOCUMENTS);
+my_retriever = Retriever(DOCUMENTS, 0.25);
 for question in TEST_QUESTIONS:
     hits = my_retriever.search(question);
+    print();
     print("Question : " + question)
     if (len(hits) > 0):
          print(my_retriever.build_context(hits))
