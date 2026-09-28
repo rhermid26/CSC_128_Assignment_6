@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from knowledge import DOCUMENTS
 
 
-DEFAULT_THRESHOLD = 0.05
+DEFAULT_THRESHOLD = 0.25
 DEFAULT_TOP_K = 3
 
 

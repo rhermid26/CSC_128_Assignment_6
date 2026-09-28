@@ -18,7 +18,7 @@ TEST_QUESTIONS = [
     "Any information on where to check for my grades for my classes?"
 ]
 
-my_retriever = Retriever(DOCUMENTS, 0.25);
+my_retriever = Retriever(DOCUMENTS, 0.5);
 for question in TEST_QUESTIONS:
     hits = my_retriever.search(question);
     print();
