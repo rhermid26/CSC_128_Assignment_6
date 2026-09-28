@@ -138,7 +138,8 @@ if user_input:
 
                 for source in sources:
                     st.caption(
-                        f"{source['id']} — {source['source']}"
+                        f"{source['id']} — {source['source']} "
+                        f"(score: {source['score']:.2f})"
                     )
 
             # Save assistant message
